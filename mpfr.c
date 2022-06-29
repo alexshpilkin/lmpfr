@@ -85,6 +85,33 @@ static mpfr_t *checkfr(lua_State *L, int idx) {
 	return &tofr(L, idx);
 }
 
+static const char opts[] = "AUDYZNF";
+static const mpfr_rnd_t rnds[] =
+	{MPFR_RNDA, MPFR_RNDU, MPFR_RNDD, MPFR_RNDA, MPFR_RNDZ, MPFR_RNDN, MPFR_RNDF};
+
+static mpfr_rnd_t checkrnd(lua_State *L, int idx) {
+	const char *opt, *optp;
+	if (lua_isnil(L, idx))
+		return mpfr_get_default_rounding_mode();
+	opt = luaL_checkstring(L, idx);
+	luaL_argcheck(L, opt[0] && !opt[1] && (optp = strchr(opts, toupper((unsigned char)opt[0]))),
+	              idx, lua_pushfstring(L, "invalid rounding mode"));
+	return rnds[optp - opts];
+}
+
+static mpfr_rnd_t settoprnd(lua_State *L, int low, int idx) {
+	mpfr_rnd_t rnd;
+
+	int top = lua_gettop(L); lua_settop(L, idx + 1);
+	if (low < top && top <= idx && lua_isstring(L, top) && !lua_isnumber(L, top)) {
+		lua_pushvalue(L, top);
+		lua_remove(L, top);
+	}
+
+	rnd = checkrnd(L, idx + 1);
+	lua_pop(L, 1); return rnd;
+}
+
 static mpfr_t *checkfropt(lua_State *L, int idx) {
 	mpfr_t *p;
 
@@ -99,10 +126,9 @@ static mpfr_t *checkfropt(lua_State *L, int idx) {
 }
 
 static int fr(lua_State *L) {
-	mpfr_t *p;
-	lua_settop(L, 2);
+	mpfr_rnd_t rnd = settoprnd(L, 1, 3);
 
-	p = lua_newuserdata(L, sizeof *p);
+	mpfr_t *p = lua_newuserdata(L, sizeof *p);
 	lua_pushvalue(L, lua_upvalueindex(FRMETA));
 	lua_setmetatable(L, -2);
 
@@ -111,22 +137,22 @@ static int fr(lua_State *L) {
 		mpfr_init(*p);
 		return 1;
 	case FR:
-		lua_pushnumber(L, mpfr_init_set(*p, tofr(L, 1), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_init_set(*p, tofr(L, 1), rnd));
 		return 2;
 	case Z:
-		lua_pushnumber(L, mpfr_init_set_z(*p, toz(L, 1), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_init_set_z(*p, toz(L, 1), rnd));
 		return 2;
 	case F:
-		lua_pushnumber(L, mpfr_init_set_f(*p, tof(L, 1), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_init_set_f(*p, tof(L, 1), rnd));
 		return 2;
 	case UI:
-		lua_pushnumber(L, mpfr_init_set_ui(*p, toui(L, 1), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_init_set_ui(*p, toui(L, 1), rnd));
 		return 2;
 	case SI:
-		lua_pushnumber(L, mpfr_init_set_si(*p, tosi(L, 1), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_init_set_si(*p, tosi(L, 1), rnd));
 		return 2;
 	case D:
-		lua_pushnumber(L, mpfr_init_set_d(*p, tod(L, 1), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_init_set_d(*p, tod(L, 1), rnd));
 		return 2;
 	case STR:
 		mpfr_init(*p); {
@@ -156,26 +182,24 @@ static int meth_gc(lua_State *L) {
 }
 
 static int add(lua_State *L) {
-	mpfr_t *self, *res;
-
-	lua_settop(L, 3);
-	self = checkfr(L, 1); res = checkfropt(L, 3);
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 3);
 
 	switch (type(L, 2)) {
 	case FR:
-		lua_pushnumber(L, mpfr_add(*res, *self, tofr(L, 2), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_add(*res, *self, tofr(L, 2), rnd));
 		return 2;
 	case UI:
-		lua_pushnumber(L, mpfr_add_ui(*res, *self, toui(L, 2), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_add_ui(*res, *self, toui(L, 2), rnd));
 		return 2;
 	case SI:
-		lua_pushnumber(L, mpfr_add_si(*res, *self, tosi(L, 2), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_add_si(*res, *self, tosi(L, 2), rnd));
 		return 2;
 	case D:
-		lua_pushnumber(L, mpfr_add_d(*res, *self, tod(L, 2), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_add_d(*res, *self, tod(L, 2), rnd));
 		return 2;
 	case Z:
-		lua_pushnumber(L, mpfr_add_z(*res, *self, toz(L, 2), MPFR_RNDN));
+		lua_pushnumber(L, mpfr_add_z(*res, *self, toz(L, 2), rnd));
 		return 2;
 	default:
 		return luaL_error(L, "unsupported type");
@@ -189,38 +213,49 @@ static int meth_add(lua_State *L) {
 }
 
 static int format(lua_State *L) {
-	mpfr_t *p; const char *r; mpfr_prec_t prec = -1;
-	char *fmt, *w, *s;
+	mpfr_t *p = checkfr(L, 1);
+	const char *r = luaL_checkstring(L, 2);
+	char *fmt, *w, *optp, *s;
+	int idx = 2; int width = -1, prec = -1; mpfr_rnd_t rnd;
+	lua_settop(L, 5);
 
-	lua_settop(L, 3);
-	p = checkfr(L, 1);
-	r = luaL_checkstring(L, 2);
-
-	fmt = w = lua_newuserdata(L, strlen(r) + 3);
+	fmt = w = lua_newuserdata(L, strlen(r) + sizeof "%R*");
 	*w++ = '%'; if (*r == '%') r++;
 	while (*r == '0' || *r == '=' || *r == '+' || *r == ' ')
 		*w++ = *r++;
-	while ('0' <= *r && *r <= '9')
+	if (*r == '*') {
+#if LUA_VERSION_NUM < 503
+		lua_Number n = luaL_checknumber(L, ++idx);
+#else
+		lua_Integer n = luaL_checkinteger(L, ++idx);
+#endif
+		luaL_argcheck(L, 0 <= n && n <= INT_MAX,
+		              idx, "width out of range");
+		*w++ = *r++; width = n;
+	} else while ('0' <= *r && *r <= '9')
 		*w++ = *r++;
 	if (*r == '.') {
 		*w++ = *r++;
 		if (*r == '*') {
 #if LUA_VERSION_NUM < 503
-			lua_Number n = luaL_checknumber(L, 3);
+			lua_Number n = luaL_checknumber(L, ++idx);
 #else
-			lua_Integer n = luaL_checkinteger(L, 3);
+			lua_Integer n = luaL_checkinteger(L, ++idx);
 #endif
+			luaL_argcheck(L, 0 <= n && n <= INT_MAX && n <= MPFR_PREC_MAX,
+			              idx, "precision out of range");
 			*w++ = *r++; prec = n;
-			luaL_argcheck(L, 0 <= prec && prec <= MPFR_PREC_MAX,
-			              3, "precision out of range");
-		} else {
-			while ('0' <= *r && *r <= '9') *w++ = *r++;
-			luaL_checktype(L, 3, LUA_TNIL);
-		}
+		} else while ('0' <= *r && *r <= '9')
+			*w++ = *r++;
 	}
 	*w++ = 'R'; if (*r == 'R') r++;
-	if (*r == 'U' || *r == 'D' || *r == 'Y' || *r == 'Z' || *r == 'N')
-		*w++ = *r++;
+	*w++ = '*';
+	if (*r && (optp = strchr(opts + 1, (unsigned char)*r))) {
+		rnd = rnds[optp - opts]; r++;
+	} else {
+		rnd = checkrnd(L, ++idx);
+		if (*r == '*') r++;
+	}
 	if (*r != 'A' && *r != 'a' && *r != 'b' && *r != 'E' && *r != 'e' &&
 	    *r != 'F' && *r != 'f' && *r != 'G' && *r != 'g' ||
 	    *(r + 1))
@@ -229,10 +264,14 @@ static int format(lua_State *L) {
 	}
 	*w++ = *r++; *w++ = 0;
 
-	if (prec == -1)
-		mpfr_asprintf(&s, fmt, *p);
+	if (width != -1 && prec != -1)
+		mpfr_asprintf(&s, fmt, width, prec, rnd, *p);
+	else if (width != -1)
+		mpfr_asprintf(&s, fmt, width, rnd, *p);
+	else if (prec != -1)
+		mpfr_asprintf(&s, fmt, prec, rnd, *p);
 	else
-		mpfr_asprintf(&s, fmt, prec, *p);
+		mpfr_asprintf(&s, fmt, rnd, *p);
 	lua_pushstring(L, s); mpfr_free_str(s);
 	return 1;
 }
