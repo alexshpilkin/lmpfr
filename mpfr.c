@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -12,7 +13,7 @@ enum {
 };
 
 enum {
-	NIL = 0, FR, Z, F, UI, SI, /* FIXME NI, */ D, UNK,
+	NIL = 0, FR, Z, F, UI, SI, /* FIXME NI, */ D, STR, UNK,
 };
 
 #if LUA_VERSION_NUM < 502
@@ -51,6 +52,8 @@ static int type(lua_State *L, int idx) {
 		if (ok && LONG_MIN <= n && n <= LONG_MAX && n == (long)n)
 			return SI;
 		return D; }
+	case LUA_TSTRING:
+		return STR;
 	}
 	return UNK;
 }
@@ -125,7 +128,21 @@ static int fr(lua_State *L) {
 	case D:
 		lua_pushnumber(L, mpfr_init_set_d(*p, tod(L, 1), MPFR_RNDN));
 		return 2;
-	/* FIXME string */
+	case STR:
+		mpfr_init(*p); {
+		const char *s = lua_tostring(L, 1);
+		int detect = lua_isnil(L, 2);
+#if LUA_VERSION_NUM < 503
+		lua_Number n = !detect ? luaL_checknumber(L, 2) : 0;
+#else
+		lua_Integer n = !detect ? luaL_checkinteger(L, 2) : 0;
+#endif
+		luaL_argcheck(L, detect || 2 <= n && n <= 62,
+		              2, "base out of range");
+		lua_pushnumber(L, mpfr_strtofr(*p, s, (char **)&s, n, rnd));
+		while (isspace(*s)) s++;
+		luaL_argcheck(L, !*s, 1, "invalid floating-point constant");
+		return 2; }
 	default:
 		return luaL_error(L, "cannot initialize mpfr from %s",
 		                  lua_typename(L, lua_type(L, 1)));
