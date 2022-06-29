@@ -91,11 +91,11 @@ static mpfr_t *checkfropt(lua_State *L, int idx) {
 	if (!lua_isnil(L, idx))
 		return checkfr(L, idx);
 
-	p = lua_newuserdata(L, sizeof *p); mpfr_init(*p);
+	p = lua_newuserdata(L, sizeof *p);
 	lua_pushvalue(L, lua_upvalueindex(FRMETA));
 	lua_setmetatable(L, -2);
 	lua_replace(L, idx);
-	return p;
+	mpfr_init(*p); return p;
 }
 
 static int fr(lua_State *L) {
@@ -144,9 +144,15 @@ static int fr(lua_State *L) {
 		luaL_argcheck(L, !*s, 1, "invalid floating-point constant");
 		return 2; }
 	default:
+		mpfr_init(*p); /* for later cleanup */
 		return luaL_error(L, "cannot initialize mpfr from %s",
 		                  lua_typename(L, lua_type(L, 1)));
 	}
+}
+
+static int meth_gc(lua_State *L) {
+	mpfr_t *p = checkfr(L, 1);
+	mpfr_clear(*p); return 0;
 }
 
 static int add(lua_State *L) {
@@ -254,6 +260,7 @@ static const struct luaL_Reg mod[] = {
 };
 
 static const struct luaL_Reg met[] = {
+	{"__gc",       meth_gc},
 	{"__add",      meth_add},
 	{"__tostring", meth_tostring},
 	{"add",        add},
