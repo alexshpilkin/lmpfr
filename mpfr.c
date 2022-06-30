@@ -12,10 +12,6 @@ enum {
 	FRMETA = 1, ZMETA, /* FIXME Q, */ FMETA, NUPP1, NUP = NUPP1 - 1,
 };
 
-enum {
-	NIL = 0, FR, Z, F, UI, SI, /* FIXME NI, */ D, STR, UNK,
-};
-
 #if LUA_VERSION_NUM < 502
 #define typerror(L, A, T) luaL_typerror((L), (A), (T))
 #else
@@ -26,10 +22,12 @@ int typerror(lua_State *L, int narg, const char *tname) {
 }
 #endif
 
+enum {
+	FR = 0, Z, F, UI, SI, /* FIXME NI, */ D, NIL, STR, UNK,
+};
+
 static int type(lua_State *L, int idx) {
 	switch (lua_type(L, idx)) {
-	case LUA_TNIL:
-		return NIL;
 	case LUA_TUSERDATA: {
 		int ret = UNK; lua_getmetatable(L, idx);
 		if (lua_rawequal(L, -1, lua_upvalueindex(FRMETA)))
@@ -51,10 +49,26 @@ static int type(lua_State *L, int idx) {
 		if (ok && LONG_MIN <= n && n <= LONG_MAX && n == (long)n)
 			return SI;
 		return D; }
+	case LUA_TNIL:
+		return NIL;
 	case LUA_TSTRING:
 		return STR;
 	}
 	return UNK;
+}
+
+enum {
+	FRFR = FR, FRZ = Z, ZFR = UNK + Z, FRF = F, FFR = UNK + F,
+	FRUI = UI, UIFR = UNK + UI, FRSI = SI, SIFR = UNK + SI,
+	FRD = D, DFR = UNK + D,
+	BAD = UNK + UNK,
+};
+
+static int twotypes(lua_State *L, int one, int two) {
+	int tyone = type(L, one), tytwo = type(L, two);
+	if (tyone == FR) return tytwo;
+	if (tytwo == FR) return UNK + tyone;
+	return BAD;
 }
 
 #if LUA_VERSION_NUM < 503
@@ -134,13 +148,14 @@ static int fr(lua_State *L) {
 	lua_setmetatable(L, -2);
 
 	switch (type(L, 1)) {
-	case NIL: mpfr_init(*p); return 1;
 	case FR:  return pushter(L, mpfr_init_set(*p, tofr(L, 1), rnd));
 	case Z:   return pushter(L, mpfr_init_set_z(*p, toz(L, 1), rnd));
 	case F:   return pushter(L, mpfr_init_set_f(*p, tof(L, 1), rnd));
 	case UI:  return pushter(L, mpfr_init_set_ui(*p, toui(L, 1), rnd));
 	case SI:  return pushter(L, mpfr_init_set_si(*p, tosi(L, 1), rnd));
 	case D:   return pushter(L, mpfr_init_set_d(*p, tod(L, 1), rnd));
+	case NIL:
+		mpfr_init(*p); return 1;
 	case STR:
 		mpfr_init(*p); {
 		const char *s = lua_tostring(L, 1);
@@ -169,22 +184,47 @@ static int meth_gc(lua_State *L) {
 
 static int add(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
-	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 3);
+	mpfr_t *res = checkfropt(L, 3);
+	int i, j;
 
-	switch (type(L, 2)) {
-	case FR: return pushter(L, mpfr_add(*res, *self, tofr(L, 2), rnd));
-	case Z:  return pushter(L, mpfr_add_z(*res, *self, toz(L, 2), rnd));
-	case UI: return pushter(L, mpfr_add_ui(*res, *self, toui(L, 2), rnd));
-	case SI: return pushter(L, mpfr_add_si(*res, *self, tosi(L, 2), rnd));
-	case D:  return pushter(L, mpfr_add_d(*res, *self, tod(L, 2), rnd));
-	default: return luaL_error(L, "unsupported type");
+	if (isfr(L, 1)) i = 1, j = 2; else
+	if (isfr(L, 2)) i = 2, j = 1; else
+	return luaL_error(L, "bad arguments (neither is mpfr)");
+
+	switch (type(L, j)) {
+	case FR: return pushter(L, mpfr_add(*res, tofr(L, i), tofr(L, j), rnd));
+	case Z:  return pushter(L, mpfr_add_z(*res, tofr(L, i), toz(L, j), rnd));
+	case UI: return pushter(L, mpfr_add_ui(*res, tofr(L, i), toui(L, j), rnd));
+	case SI: return pushter(L, mpfr_add_si(*res, tofr(L, i), tosi(L, j), rnd));
+	case D:  return pushter(L, mpfr_add_d(*res, tofr(L, i), tod(L, j), rnd));
+	default: return typerror(L, j, "mpfr, mpz, or number");
 	}
 }
 
-static int meth_add(lua_State *L) {
-	lua_settop(L, 2);
-	if (!isfr(L, 1)) lua_insert(L, 1);
-	return add(L);
+static int sub(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *res = checkfropt(L, 3);
+
+	switch (twotypes(L, 1, 2)) {
+	case FR:   return pushter(L, mpfr_sub(*res, tofr(L, 1), tofr(L, 2), rnd));
+	case FRZ:  return pushter(L, mpfr_sub_z(*res, tofr(L, 1), toz(L, 2), rnd));
+	case ZFR:  return pushter(L, mpfr_z_sub(*res, toz(L, 1), tofr(L, 2), rnd));
+	case FRUI: return pushter(L, mpfr_sub_ui(*res, tofr(L, 1), toui(L, 2), rnd));
+	case UIFR: return pushter(L, mpfr_ui_sub(*res, toui(L, 1), tofr(L, 2), rnd));
+	case FRSI: return pushter(L, mpfr_sub_si(*res, tofr(L, 1), tosi(L, 2), rnd));
+	case SIFR: return pushter(L, mpfr_si_sub(*res, tosi(L, 1), tofr(L, 2), rnd));
+	case FRD:  return pushter(L, mpfr_sub_d(*res, tofr(L, 1), tod(L, 2), rnd));
+	case DFR:  return pushter(L, mpfr_d_sub(*res, tod(L, 1), tofr(L, 2), rnd));
+	case BAD:  return luaL_error(L, "bad arguments (neither is mpfr)");
+	default:   return typerror(L, isfr(L, 1) ? 2 : 1, "mpfr, mpz, or number");
+	}
+}
+
+static int rsub(lua_State *L) {
+	if (lua_gettop(L) < 2) lua_settop(L, 2);
+	lua_pushvalue(L, 1); lua_pushvalue(L, 2);
+	lua_replace(L, 1); lua_replace(L, 2);
+	return sub(L); /* FIXME misleading errors */
 }
 
 static int format(lua_State *L) {
@@ -275,9 +315,12 @@ static const struct luaL_Reg mod[] = {
 
 static const struct luaL_Reg met[] = {
 	{"__gc",       meth_gc},
-	{"__add",      meth_add},
+	{"__add",      add},
+	{"__sub",      sub},
 	{"__tostring", meth_tostring},
 	{"add",        add},
+	{"sub",        sub},
+	{"rsub",       rsub},
 	{"format",     format},
 	{0},
 };
