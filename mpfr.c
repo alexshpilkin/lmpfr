@@ -20,9 +20,8 @@ enum {
 #define typerror(L, A, T) luaL_typerror((L), (A), (T))
 #else
 int typerror(lua_State *L, int narg, const char *tname) {
-	static const char fmt[] = "%s expected, got %s";
-	char msg[sizeof fmt + (sizeof "lightuserdata" - 3) * 2];
-	sprintf(msg, fmt, tname, lua_typename(L, lua_type(L, narg)));
+	const char *msg = lua_pushfstring(L, "%s expected, got %s",
+	                                  tname, luaL_typename(L, narg));
 	return luaL_argerror(L, narg, msg);
 }
 #endif
@@ -112,6 +111,8 @@ static mpfr_rnd_t settoprnd(lua_State *L, int low, int idx) {
 	lua_pop(L, 1); return rnd;
 }
 
+#define pushter(L, I) (lua_pushinteger((L), (I)), 2)
+
 static mpfr_t *checkfropt(lua_State *L, int idx) {
 	mpfr_t *p;
 
@@ -133,27 +134,13 @@ static int fr(lua_State *L) {
 	lua_setmetatable(L, -2);
 
 	switch (type(L, 1)) {
-	case NIL:
-		mpfr_init(*p);
-		return 1;
-	case FR:
-		lua_pushnumber(L, mpfr_init_set(*p, tofr(L, 1), rnd));
-		return 2;
-	case Z:
-		lua_pushnumber(L, mpfr_init_set_z(*p, toz(L, 1), rnd));
-		return 2;
-	case F:
-		lua_pushnumber(L, mpfr_init_set_f(*p, tof(L, 1), rnd));
-		return 2;
-	case UI:
-		lua_pushnumber(L, mpfr_init_set_ui(*p, toui(L, 1), rnd));
-		return 2;
-	case SI:
-		lua_pushnumber(L, mpfr_init_set_si(*p, tosi(L, 1), rnd));
-		return 2;
-	case D:
-		lua_pushnumber(L, mpfr_init_set_d(*p, tod(L, 1), rnd));
-		return 2;
+	case NIL: mpfr_init(*p); return 1;
+	case FR:  return pushter(L, mpfr_init_set(*p, tofr(L, 1), rnd));
+	case Z:   return pushter(L, mpfr_init_set_z(*p, toz(L, 1), rnd));
+	case F:   return pushter(L, mpfr_init_set_f(*p, tof(L, 1), rnd));
+	case UI:  return pushter(L, mpfr_init_set_ui(*p, toui(L, 1), rnd));
+	case SI:  return pushter(L, mpfr_init_set_si(*p, tosi(L, 1), rnd));
+	case D:   return pushter(L, mpfr_init_set_d(*p, tod(L, 1), rnd));
 	case STR:
 		mpfr_init(*p); {
 		const char *s = lua_tostring(L, 1);
@@ -171,8 +158,7 @@ static int fr(lua_State *L) {
 		return 2; }
 	default:
 		mpfr_init(*p); /* for later cleanup */
-		return luaL_error(L, "cannot initialize mpfr from %s",
-		                  lua_typename(L, lua_type(L, 1)));
+		return typerror(L, 1, "mpfr, mpf, mpz, number, or string");
 	}
 }
 
@@ -186,23 +172,12 @@ static int add(lua_State *L) {
 	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 3);
 
 	switch (type(L, 2)) {
-	case FR:
-		lua_pushnumber(L, mpfr_add(*res, *self, tofr(L, 2), rnd));
-		return 2;
-	case UI:
-		lua_pushnumber(L, mpfr_add_ui(*res, *self, toui(L, 2), rnd));
-		return 2;
-	case SI:
-		lua_pushnumber(L, mpfr_add_si(*res, *self, tosi(L, 2), rnd));
-		return 2;
-	case D:
-		lua_pushnumber(L, mpfr_add_d(*res, *self, tod(L, 2), rnd));
-		return 2;
-	case Z:
-		lua_pushnumber(L, mpfr_add_z(*res, *self, toz(L, 2), rnd));
-		return 2;
-	default:
-		return luaL_error(L, "unsupported type");
+	case FR: return pushter(L, mpfr_add(*res, *self, tofr(L, 2), rnd));
+	case Z:  return pushter(L, mpfr_add_z(*res, *self, toz(L, 2), rnd));
+	case UI: return pushter(L, mpfr_add_ui(*res, *self, toui(L, 2), rnd));
+	case SI: return pushter(L, mpfr_add_si(*res, *self, tosi(L, 2), rnd));
+	case D:  return pushter(L, mpfr_add_d(*res, *self, tod(L, 2), rnd));
+	default: return luaL_error(L, "unsupported type");
 	}
 }
 
