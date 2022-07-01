@@ -273,6 +273,47 @@ static int rdiv(lua_State *L) {
 	return div(L); /* FIXME misleading errors */
 }
 
+/* unlike the C version, propagates NaNs to output */
+static int cmp(lua_State *L) {
+	int i, j, res; lua_settop(L, 2);
+
+	if (isfr(L, 1)) i = 1, j = 2; else
+	if (isfr(L, 2)) i = 2, j = 1; else
+	return luaL_error(L, "bad arguments (neither is mpfr)");
+
+	switch (type(L, j)) {
+	case FR: res = mpfr_cmp(tofr(L, i), tofr(L, j)); break;
+	case Z:  res = mpfr_cmp_z(tofr(L, i), toz(L, j)); break;
+	case F:  res = mpfr_cmp_f(tofr(L, i), tof(L, j)); break;
+	case UI: res = mpfr_cmp_ui(tofr(L, i), toui(L, j)); break;
+	case SI: res = mpfr_cmp_si(tofr(L, i), tosi(L, j)); break;
+	case D:  res = mpfr_cmp_d(tofr(L, i), tod(L, j)); break;
+	default: return typerror(L, j, "mpfr, mpz, mpf, or number");
+	}
+
+	lua_pushinteger(L, res);
+	if (mpfr_erangeflag_p()) {
+		if (mpfr_nan_p(tofr(L, i)))
+			lua_pushvalue(L, i);
+		else if (isfr(L, j) && mpfr_nan_p(tofr(L, j)))
+			lua_pushvalue(L, j);
+	}
+	return 1;
+}
+
+#define REL(L, P) do { \
+	mpfr_t *self, *other; lua_settop(L, 2); \
+	self = checkfr(L, 1); other = checkfr(L, 2); \
+	lua_pushboolean(L, mpfr_ ## P ## _p (*self, *other)); return 1; \
+} while (0)
+
+/* FIXME nan == nan */
+static int lt(lua_State *L) { REL(L, less); }
+static int le(lua_State *L) { REL(L, lessequal); }
+static int eq(lua_State *L) { REL(L, equal); }
+static int ge(lua_State *L) { REL(L, greaterequal); }
+static int gt(lua_State *L) { REL(L, greater); }
+
 static int pow_(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
 	mpfr_t *res = checkfropt(L, 3);
@@ -412,6 +453,11 @@ static const struct luaL_Reg met[] = {
 	/* FIXME __mod with quotient to -inf */
 	{"__pow",      pow_},
 	{"__concat",   meth_concat},
+	{"__lt",       lt},
+	{"__le",       le},
+	{"__eq",       eq},
+	{"__ge",       ge},
+	{"__gt",       gt},
 	{"__tostring", meth_tostring},
 	{"add",        add},
 	{"sub",        sub},
@@ -419,6 +465,7 @@ static const struct luaL_Reg met[] = {
 	{"mul",        mul},
 	{"div",        div},
 	{"rdiv",       rdiv},
+	{"cmp",        cmp},
 	{"pow",        pow_},
 	{"rpow",       rpow},
 	{"format",     format},
