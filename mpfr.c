@@ -227,6 +227,80 @@ static int rsub(lua_State *L) {
 	return sub(L); /* FIXME misleading errors */
 }
 
+static int mul(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *res = checkfropt(L, 3);
+	int i, j;
+
+	if (isfr(L, 1)) i = 1, j = 2; else
+	if (isfr(L, 2)) i = 2, j = 1; else
+	return luaL_error(L, "bad arguments (neither is mpfr)");
+
+	switch (type(L, j)) {
+	case FR: return pushter(L, mpfr_mul(*res, tofr(L, i), tofr(L, j), rnd));
+	case Z:  return pushter(L, mpfr_mul_z(*res, tofr(L, i), toz(L, j), rnd));
+	case UI: return pushter(L, mpfr_mul_ui(*res, tofr(L, i), toui(L, j), rnd));
+	case SI: return pushter(L, mpfr_mul_si(*res, tofr(L, i), tosi(L, j), rnd));
+	case D:  return pushter(L, mpfr_mul_d(*res, tofr(L, i), tod(L, j), rnd));
+	default: return typerror(L, j, "mpfr, mpz, or number");
+	}
+}
+
+static int div(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *res = checkfropt(L, 3);
+
+	switch (twotypes(L, 1, 2)) {
+	case FR:   return pushter(L, mpfr_div(*res, tofr(L, 1), tofr(L, 2), rnd));
+	case FRZ:  return pushter(L, mpfr_div_z(*res, tofr(L, 1), toz(L, 2), rnd));
+	case FRUI: return pushter(L, mpfr_div_ui(*res, tofr(L, 1), toui(L, 2), rnd));
+	case UIFR: return pushter(L, mpfr_ui_div(*res, toui(L, 1), tofr(L, 2), rnd));
+	case FRSI: return pushter(L, mpfr_div_si(*res, tofr(L, 1), tosi(L, 2), rnd));
+	case SIFR: return pushter(L, mpfr_si_div(*res, tosi(L, 1), tofr(L, 2), rnd));
+	case FRD:  return pushter(L, mpfr_div_d(*res, tofr(L, 1), tod(L, 2), rnd));
+	case DFR:  return pushter(L, mpfr_d_div(*res, tod(L, 1), tofr(L, 2), rnd));
+	case BAD:  return luaL_error(L, "bad arguments (neither is mpfr)");
+	default:
+		if (isfr(L, 1)) return typerror(L, 2, "mpfr, mpz, or number");
+		else return typerror(L, 1, "mpfr or number");
+	}
+}
+
+static int rdiv(lua_State *L) {
+	if (lua_gettop(L) < 2) lua_settop(L, 2);
+	lua_pushvalue(L, 1); lua_pushvalue(L, 2);
+	lua_replace(L, 1); lua_replace(L, 2);
+	return div(L); /* FIXME misleading errors */
+}
+
+static int pow_(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *res = checkfropt(L, 3);
+
+	switch (twotypes(L, 1, 2)) {
+	case FR:   return pushter(L, mpfr_pow(*res, tofr(L, 1), tofr(L, 2), rnd));
+	case FRZ:  return pushter(L, mpfr_pow_z(*res, tofr(L, 1), toz(L, 2), rnd));
+	case FRUI: return pushter(L, mpfr_pow_ui(*res, tofr(L, 1), toui(L, 2), rnd));
+	case UIFR: return pushter(L, mpfr_ui_pow(*res, toui(L, 1), tofr(L, 2), rnd));
+	case FRSI: return pushter(L, mpfr_pow_si(*res, tofr(L, 1), tosi(L, 2), rnd));
+	case BAD:
+		if (type(L, 1) == UI && type(L, 2) == UI)
+			return pushter(L, mpfr_ui_pow_ui(*res, toui(L, 1), toui(L, 2), rnd));
+		/* FIXME misleading error */
+		return luaL_error(L, "bad arguments (neither is mpfr)");
+	default:
+		if (isfr(L, 1)) return typerror(L, 2, "mpfr, mpz, or integer");
+		else return typerror(L, 1, "mpfr or non-negative integer");
+	}
+}
+
+static int rpow(lua_State *L) {
+	if (lua_gettop(L) < 2) lua_settop(L, 2);
+	lua_pushvalue(L, 1); lua_pushvalue(L, 2);
+	lua_replace(L, 1); lua_replace(L, 2);
+	return pow_(L); /* FIXME misleading errors */
+}
+
 static int format(lua_State *L) {
 	mpfr_t *p = checkfr(L, 1);
 	const char *r = luaL_checkstring(L, 2);
@@ -297,6 +371,21 @@ static int meth_tostring(lua_State *L) {
 	return format(L);
 }
 
+static int meth_concat(lua_State *L) {
+	int first; lua_settop(L, 2);
+
+	if ( !(first = isfr(L, 1)) ) lua_insert(L, 1);
+	lua_pushstring(L, "g"); lua_insert(L, 2);
+	lua_pushnil(L); lua_insert(L, 3);
+	/* mpfr "g" nil arg */
+	format(L);
+	/* ? ? ? arg ... str */
+	lua_pushvalue(L, 4);
+	if (!first) lua_insert(L, -2);
+
+	lua_concat(L, 2); return 1;
+}
+
 static void setfuncs(lua_State *L, int idx, const luaL_Reg *l, int nup) {
 	lua_pushvalue(L, idx);
 	for (; l->name; l++) {
@@ -310,6 +399,7 @@ static void setfuncs(lua_State *L, int idx, const luaL_Reg *l, int nup) {
 
 static const struct luaL_Reg mod[] = {
 	{"fr", fr},
+	{"pow", pow_},
 	{0},
 };
 
@@ -317,10 +407,20 @@ static const struct luaL_Reg met[] = {
 	{"__gc",       meth_gc},
 	{"__add",      add},
 	{"__sub",      sub},
+	{"__mul",      mul},
+	{"__div",      div},
+	/* FIXME __mod with quotient to -inf */
+	{"__pow",      pow_},
+	{"__concat",   meth_concat},
 	{"__tostring", meth_tostring},
 	{"add",        add},
 	{"sub",        sub},
 	{"rsub",       rsub},
+	{"mul",        mul},
+	{"div",        div},
+	{"rdiv",       rdiv},
+	{"pow",        pow_},
+	{"rpow",       rpow},
 	{"format",     format},
 	{0},
 };
