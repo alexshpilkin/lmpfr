@@ -427,6 +427,24 @@ static int meth_concat(lua_State *L) {
 	lua_concat(L, 2); return 1;
 }
 
+static int rint_(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
+	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 2);
+	return pushter(L, mpfr_rint(*res, *self, rnd));
+}
+
+#define RND(L, F) do { \
+	mpfr_t *self, *res; lua_settop(L, 2); \
+	self = checkfr(L, 1); res = checkfropt(L, 2); \
+	return pushter(L, mpfr_ ## F (*res, *self)); \
+} while (0)
+
+static int ceil_     (lua_State *L) { RND(L, ceil); }
+static int floor_    (lua_State *L) { RND(L, floor); }
+static int round_    (lua_State *L) { RND(L, round); }
+static int roundeven_(lua_State *L) { RND(L, roundeven); }
+static int trunc_    (lua_State *L) { RND(L, trunc); }
+
 static void setfuncs(lua_State *L, int idx, const luaL_Reg *l, int nup) {
 	lua_pushvalue(L, idx);
 	for (; l->name; l++) {
@@ -469,6 +487,12 @@ static const struct luaL_Reg met[] = {
 	{"pow",        pow_},
 	{"rpow",       rpow},
 	{"format",     format},
+	{"rint",       rint_},
+	{"ceil",       ceil_},
+	{"floor",      floor_},
+	{"round",      round_},
+	{"roundeven",  roundeven_},
+	{"trunc",      trunc_},
 	{0},
 };
 
