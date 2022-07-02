@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -302,7 +303,7 @@ static int get_str(lua_State *L) {
 
 	luaL_argcheck(L, -36 <= base && base <= -2 || 2 <= base && base <= 62,
 	              2, "base out of range");
-	luaL_argcheck(L, autosize || 1 <= size && size <= SIZE_MAX,
+	luaL_argcheck(L, autosize || 1 <= size && size <= (size_t)-1,
 	              3, "size out of range");
 
 	res = mpfr_get_str(NULL, &exp, base, size, *self, rnd);
