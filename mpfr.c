@@ -512,6 +512,20 @@ static int acosh_(lua_State *L) { UNF(L, acosh); }
 static int asinh_(lua_State *L) { UNF(L, asinh); }
 static int atanh_(lua_State *L) { UNF(L, atanh); }
 
+static int eint    (lua_State *L) { UNF(L, eint); }
+static int li2     (lua_State *L) { UNF(L, li2); }
+static int gamma_  (lua_State *L) { UNF(L, gamma); }
+static int lngamma (lua_State *L) { UNF(L, lngamma); }
+static int digamma (lua_State *L) { UNF(L, digamma); }
+static int zeta    (lua_State *L) { UNF_UI(L, zeta); }
+static int erf_    (lua_State *L) { UNF(L, erf); }
+static int erfc_   (lua_State *L) { UNF(L, erfc); }
+static int j0_     (lua_State *L) { UNF(L, j0); }
+static int j1_     (lua_State *L) { UNF(L, j1); }
+static int y0_     (lua_State *L) { UNF(L, y0); }
+static int y1_     (lua_State *L) { UNF(L, y1); }
+static int ai      (lua_State *L) { UNF(L, ai); }
+
 /* .9 Formatted output functions */
 
 static int format(lua_State *L) {
@@ -674,6 +688,7 @@ static const struct luaL_Reg mod[] = {
 	{"log", log_},
 	{"pow", pow_},
 	{"atan2", atan2_},
+	{"zeta", zeta},
 	{0},
 };
 
@@ -757,6 +772,20 @@ static const struct luaL_Reg met[] = {
 	{"acosh",      acosh_},
 	{"asinh",      asinh_},
 	{"atanh",      atanh_},
+	{"eint",       eint},
+	{"li2",        li2},
+	{"gamma",      gamma_},
+	{"tgamma",     gamma_}, /* C99 name */
+	{"lngamma",    lngamma},
+	{"digamma",    digamma},
+	{"zeta",       zeta},
+	{"erf",        erf_},
+	{"erfc",       erfc_},
+	{"j0",         j0_},
+	{"j1",         j1_},
+	{"y0",         y0_},
+	{"y1",         y1_},
+	{"ai",         ai},
 	/* .9 Formatted output functions */
 	{"format",     format},
 	/* .10 Integer and remainder related functions */
