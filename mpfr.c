@@ -493,6 +493,12 @@ static int acos_(lua_State *L) { UNF(L, acos); }
 static int asin_(lua_State *L) { UNF(L, asin); }
 static int atan_(lua_State *L) { UNF(L, atan); }
 
+static int atan2_(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *y = checkfr(L, 1), *x = checkfr(L, 2), *res = checkfropt(L, 3);
+	return pushter(L, mpfr_atan2(*res, *y, *x, rnd));
+}
+
 static int cosh_(lua_State *L) { UNF(L, cosh); }
 static int sinh_(lua_State *L) { UNF(L, sinh); }
 static int tanh_(lua_State *L) { UNF(L, tanh); }
@@ -667,6 +673,7 @@ static const struct luaL_Reg mod[] = {
 	{"sqrt", sqrt_},
 	{"log", log_},
 	{"pow", pow_},
+	{"atan2", atan2_},
 	{0},
 };
 
@@ -738,6 +745,7 @@ static const struct luaL_Reg met[] = {
 	{"acos",       acos_},
 	{"asin",       asin_},
 	{"atan",       atan_},
+	{"atan2",      atan2_},
 	{"cosh",       cosh_},
 	{"sinh",       sinh_},
 	{"tanh",       tanh_},
