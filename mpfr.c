@@ -98,6 +98,17 @@ static mpfr_t *checkfr(lua_State *L, int idx) {
 	return &tofr(L, idx);
 }
 
+static mpfr_prec_t checkprec(lua_State *L, int idx) {
+#if LUA_VERSION_NUM < 503
+	lua_Number prec = luaL_checknumber(L, idx);
+#else
+	lua_Integer prec = luaL_checkinteger(L, idx);
+#endif
+	luaL_argcheck(L, MPFR_PREC_MIN <= prec && prec <= MPFR_PREC_MAX,
+	              idx, "precision out of range");
+	return prec;
+}
+
 static const char opts[] = "AUDYZNF";
 static const mpfr_rnd_t rnds[] =
 	{MPFR_RNDA, MPFR_RNDU, MPFR_RNDD, MPFR_RNDA, MPFR_RNDZ, MPFR_RNDN, MPFR_RNDF};
@@ -180,6 +191,16 @@ static int fr(lua_State *L) {
 static int meth_gc(lua_State *L) {
 	mpfr_t *p = checkfr(L, 1);
 	mpfr_clear(*p); return 0;
+}
+
+static int set_default_prec(lua_State *L) {
+	lua_settop(L, 1);
+	mpfr_set_default_prec(checkprec(L, 1));
+	return 0;
+}
+
+static int get_default_prec(lua_State *L) {
+	lua_pushinteger(L, mpfr_get_default_prec()); return 1;
 }
 
 /* .5 Arithmetic functions */
@@ -478,14 +499,7 @@ static int get_default_rounding_mode(lua_State *L) {
 
 static int prec_round(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
-	mpfr_t *self = checkfr(L, 1);
-#if LUA_VERSION_NUM < 503
-	lua_Number prec = luaL_checknumber(L, 2);
-#else
-	lua_Integer prec = luaL_checkinteger(L, 2);
-#endif
-	luaL_argcheck(L, MPFR_PREC_MIN <= prec && prec <= MPFR_PREC_MAX,
-	              2, "precision out of range");
+	mpfr_t *self = checkfr(L, 1); mpfr_prec_t prec = checkprec(L, 2);
 	lua_pushinteger(L, mpfr_prec_round(*self, prec, rnd));
 	return 1;
 }
@@ -503,6 +517,8 @@ static void setfuncs(lua_State *L, int idx, const luaL_Reg *l, int nup) {
 
 static const struct luaL_Reg mod[] = {
 	{"fr", fr},
+	{"set_default_prec", set_default_prec},
+	{"get_default_prec", get_default_prec},
 	{"set_default_rounding_mode", set_default_rounding_mode},
 	{"get_default_rounding_mode", get_default_rounding_mode},
 	{"pow", pow_},
