@@ -411,6 +411,36 @@ static int meth_unm(lua_State *L) {
 
 static int abs_(lua_State *L) { UNF(L, abs); }
 
+static int mul_2exp(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 3);
+#if LUA_VERSION_NUM < 503
+	lua_Number n = luaL_checknumber(L, 2);
+#else
+	lua_Integer n = luaL_checkinteger(L, 2);
+#endif
+	if (0 <= n && n <= ULONG_MAX)
+		return pushter(L, mpfr_mul_2ui(*res, *self, n, rnd));
+	if (LONG_MIN <= n && n <= LONG_MAX)
+		return pushter(L, mpfr_mul_2si(*res, *self, n, rnd));
+	return luaL_argerror(L, 2, "exponent out of range");
+}
+
+static int div_2exp(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 3);
+#if LUA_VERSION_NUM < 503
+	lua_Number n = luaL_checknumber(L, 2);
+#else
+	lua_Integer n = luaL_checkinteger(L, 2);
+#endif
+	if (0 <= n && n <= ULONG_MAX)
+		return pushter(L, mpfr_div_2ui(*res, *self, n, rnd));
+	if (LONG_MIN <= n && n <= LONG_MAX)
+		return pushter(L, mpfr_div_2si(*res, *self, n, rnd));
+	return luaL_argerror(L, 2, "exponent out of range");
+}
+
 /* .6 Comparison functions */
 
 /* unlike the C version, propagates NaNs to output */
@@ -804,6 +834,8 @@ static const struct luaL_Reg met[] = {
 	{"rootn",      rootn},
 	{"neg",        neg},
 	{"abs",        abs_},
+	{"mul_2exp",   mul_2exp},
+	{"div_2exp",   div_2exp},
 	/* .6 Comparison functions */
 	{"cmp",        cmp},
 	{"nan",        nan_},
