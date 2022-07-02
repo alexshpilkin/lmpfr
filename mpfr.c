@@ -203,6 +203,19 @@ static int get_default_prec(lua_State *L) {
 	lua_pushinteger(L, mpfr_get_default_prec()); return 1;
 }
 
+static int set_prec(lua_State *L) {
+	mpfr_t *self; mpfr_prec_t prec; lua_settop(L, 2);
+	self = checkfr(L, 1); prec = checkprec(L, 2);
+	mpfr_set_prec(*self, prec);
+	return 0;
+}
+
+static int get_prec(lua_State *L) {
+	mpfr_t *self; lua_settop(L, 1);
+	self = checkfr(L, 1);
+	lua_pushinteger(L, mpfr_get_prec(*self)); return 1;
+}
+
 /* .5 Arithmetic functions */
 
 static int add(lua_State *L) {
@@ -540,6 +553,9 @@ static const struct luaL_Reg met[] = {
 	{"__ge",       ge},
 	{"__gt",       gt},
 	{"__tostring", meth_tostring},
+	/* .1 Initialization functions */
+	{"set_prec",   set_prec},
+	{"get_prec",   get_prec},
 	/* .5 Arithmetic functions */
 	{"add",        add},
 	{"sub",        sub},
