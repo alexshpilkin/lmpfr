@@ -216,6 +216,23 @@ static int get_prec(lua_State *L) {
 	lua_pushinteger(L, mpfr_get_prec(*self)); return 1;
 }
 
+/* .4 Conversion functions */
+
+#define FIT(L, T) do { \
+	mpfr_rnd_t rnd = settoprnd(L, 0, 1); \
+	mpfr_t *self = checkfr(L, 1); \
+	lua_pushboolean(L, mpfr_fits_ ## T ## _p (*self, rnd)); return 1; \
+} while (0)
+
+static int fits_ulong   (lua_State *L) { FIT(L, ulong); }
+static int fits_slong   (lua_State *L) { FIT(L, slong); }
+static int fits_uint    (lua_State *L) { FIT(L, uint); }
+static int fits_sint    (lua_State *L) { FIT(L, sint); }
+static int fits_ushort  (lua_State *L) { FIT(L, ushort); }
+static int fits_sshort  (lua_State *L) { FIT(L, sshort); }
+static int fits_uintmax (lua_State *L) { FIT(L, uintmax); }
+static int fits_intmax  (lua_State *L) { FIT(L, intmax); }
+
 /* .5 Arithmetic functions */
 
 static int add(lua_State *L) {
@@ -556,6 +573,15 @@ static const struct luaL_Reg met[] = {
 	/* .1 Initialization functions */
 	{"set_prec",   set_prec},
 	{"get_prec",   get_prec},
+	/* .4 Conversion functions */
+	{"fits_ulong",   fits_ulong},
+	{"fits_slong",   fits_slong},
+	{"fits_uint",    fits_uint},
+	{"fits_sint",    fits_sint},
+	{"fits_ushort",  fits_ushort},
+	{"fits_sshort",  fits_sshort},
+	{"fits_uintmax", fits_uintmax},
+	{"fits_intmax",  fits_intmax},
 	/* .5 Arithmetic functions */
 	{"add",        add},
 	{"sub",        sub},
