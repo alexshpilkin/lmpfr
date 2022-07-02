@@ -457,6 +457,25 @@ static int trunc_    (lua_State *L) { RND(L, trunc); }
 
 /* .11 Rounding-related functions */
 
+static int set_default_rounding_mode(lua_State *L) {
+	mpfr_rnd_t rnd = checkrnd(L, 1);
+	mpfr_set_default_rounding_mode(rnd);
+	return 0;
+}
+
+static int get_default_rounding_mode(lua_State *L) {
+	char mode;
+	switch (mpfr_get_default_rounding_mode()) {
+	case MPFR_RNDU: mode = 'U'; break;
+	case MPFR_RNDD: mode = 'D'; break;
+	case MPFR_RNDA: mode = 'A'; break;
+	case MPFR_RNDZ: mode = 'Z'; break;
+	case MPFR_RNDN: mode = 'N'; break;
+	case MPFR_RNDF: mode = 'F'; break;
+	}
+	lua_pushlstring(L, &mode, 1); return 1;
+}
+
 static int prec_round(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
 	mpfr_t *self = checkfr(L, 1);
@@ -484,6 +503,8 @@ static void setfuncs(lua_State *L, int idx, const luaL_Reg *l, int nup) {
 
 static const struct luaL_Reg mod[] = {
 	{"fr", fr},
+	{"set_default_rounding_mode", set_default_rounding_mode},
+	{"get_default_rounding_mode", get_default_rounding_mode},
 	{"pow", pow_},
 	{0},
 };
