@@ -177,6 +177,13 @@ static mpfr_t *checkfropt(lua_State *L, int idx) {
 	return 3; \
 } while (0)
 
+#define BIF(L, F) do { \
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3); \
+	mpfr_t *self = checkfr(L, 1), *other = checkfr(L, 2), \
+	       *res = checkfropt(L, 3); \
+	return pushter(L, mpfr_ ## F (*res, *self, *other, rnd)); \
+} while (0)
+
 static int fr(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 1, 3);
 
@@ -486,18 +493,13 @@ static int tan_(lua_State *L) { UNF(L, tan); }
 
 static int sin_cos(lua_State *L) { UNF_SC(L, sin_cos); }
 
-static int sec  (lua_State *L) { UNF(L, sec); }
-static int csc  (lua_State *L) { UNF(L, csc); }
-static int cot  (lua_State *L) { UNF(L, cot); }
-static int acos_(lua_State *L) { UNF(L, acos); }
-static int asin_(lua_State *L) { UNF(L, asin); }
-static int atan_(lua_State *L) { UNF(L, atan); }
-
-static int atan2_(lua_State *L) {
-	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
-	mpfr_t *y = checkfr(L, 1), *x = checkfr(L, 2), *res = checkfropt(L, 3);
-	return pushter(L, mpfr_atan2(*res, *y, *x, rnd));
-}
+static int sec   (lua_State *L) { UNF(L, sec); }
+static int csc   (lua_State *L) { UNF(L, csc); }
+static int cot   (lua_State *L) { UNF(L, cot); }
+static int acos_ (lua_State *L) { UNF(L, acos); }
+static int asin_ (lua_State *L) { UNF(L, asin); }
+static int atan_ (lua_State *L) { UNF(L, atan); }
+static int atan2_(lua_State *L) { BIF(L, atan2); }
 
 static int cosh_(lua_State *L) { UNF(L, cosh); }
 static int sinh_(lua_State *L) { UNF(L, sinh); }
@@ -526,6 +528,7 @@ static int lgamma_(lua_State *L) {
 }
 
 static int digamma (lua_State *L) { UNF(L, digamma); }
+static int beta    (lua_State *L) { BIF(L, beta); }
 static int zeta    (lua_State *L) { UNF_UI(L, zeta); }
 static int erf_    (lua_State *L) { UNF(L, erf); }
 static int erfc_   (lua_State *L) { UNF(L, erfc); }
@@ -566,7 +569,8 @@ static int yn_(lua_State *L) {
 	return pushter(L, mpfr_yn(*res, n, *self, rnd));
 }
 
-static int ai(lua_State *L) { UNF(L, ai); }
+static int ai (lua_State *L) { UNF(L, ai); }
+static int agm(lua_State *L) { BIF(L, agm); }
 
 /* .9 Formatted output functions */
 
@@ -730,9 +734,11 @@ static const struct luaL_Reg mod[] = {
 	{"log", log_},
 	{"pow", pow_},
 	{"atan2", atan2_},
+	{"beta", beta},
 	{"zeta", zeta},
 	{"jn", jn_},
 	{"yn", yn_},
+	{"agm", agm},
 	{0},
 };
 
@@ -823,6 +829,7 @@ static const struct luaL_Reg met[] = {
 	{"lngamma",    lngamma},
 	{"lgamma",     lgamma_},
 	{"digamma",    digamma},
+	{"beta",       beta},
 	{"zeta",       zeta},
 	{"erf",        erf_},
 	{"erfc",       erfc_},
@@ -833,6 +840,7 @@ static const struct luaL_Reg met[] = {
 	{"y1",         y1_},
 	{"yn",         yn_},
 	{"ai",         ai},
+	{"agm",        agm},
 	/* .9 Formatted output functions */
 	{"format",     format},
 	/* .10 Integer and remainder related functions */
