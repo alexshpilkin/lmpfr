@@ -455,6 +455,22 @@ static int round_    (lua_State *L) { RND(L, round); }
 static int roundeven_(lua_State *L) { RND(L, roundeven); }
 static int trunc_    (lua_State *L) { RND(L, trunc); }
 
+/* .11 Rounding-related functions */
+
+static int prec_round(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
+	mpfr_t *self = checkfr(L, 1);
+#if LUA_VERSION_NUM < 503
+	lua_Number prec = luaL_checknumber(L, 2);
+#else
+	lua_Integer prec = luaL_checkinteger(L, 2);
+#endif
+	luaL_argcheck(L, MPFR_PREC_MIN <= prec && prec <= MPFR_PREC_MAX,
+	              2, "precision out of range");
+	lua_pushinteger(L, mpfr_prec_round(*self, prec, rnd));
+	return 1;
+}
+
 static void setfuncs(lua_State *L, int idx, const luaL_Reg *l, int nup) {
 	lua_pushvalue(L, idx);
 	for (; l->name; l++) {
@@ -508,6 +524,8 @@ static const struct luaL_Reg met[] = {
 	{"round",      round_},
 	{"roundeven",  roundeven_},
 	{"trunc",      trunc_},
+	/* .11 Rounding-related functions */
+	{"prec_round", prec_round},
 	{0},
 };
 
