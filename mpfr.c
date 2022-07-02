@@ -98,6 +98,12 @@ static mpfr_t *checkfr(lua_State *L, int idx) {
 	return &tofr(L, idx);
 }
 
+#define PRD(L, P) do { \
+	mpfr_t *self; lua_settop(L, 1); \
+	self = checkfr(L, 1); \
+	lua_pushboolean(L, mpfr_ ## P ## _p (*self)); return 1; \
+} while (0)
+
 static mpfr_prec_t checkprec(lua_State *L, int idx) {
 #if LUA_VERSION_NUM < 503
 	lua_Number prec = luaL_checknumber(L, idx);
@@ -435,6 +441,12 @@ static int cmp(lua_State *L) {
 	return 1;
 }
 
+static int nan_(lua_State *L)    { PRD(L, nan); }
+static int inf(lua_State *L)     { PRD(L, inf); }
+static int number(lua_State *L)  { PRD(L, number); }
+static int zero(lua_State *L)    { PRD(L, zero); }
+static int regular(lua_State *L) { PRD(L, regular); }
+
 #define REL(L, P) do { \
 	mpfr_t *self, *other; lua_settop(L, 2); \
 	self = checkfr(L, 1); other = checkfr(L, 2); \
@@ -679,11 +691,7 @@ static int round_    (lua_State *L) { RND(L, round); }
 static int roundeven_(lua_State *L) { RND(L, roundeven); }
 static int trunc_    (lua_State *L) { RND(L, trunc); }
 
-static int integer(lua_State *L) {
-	mpfr_t *self; lua_settop(L, 1);
-	self = checkfr(L, 1);
-	lua_pushboolean(L, mpfr_integer_p(*self)); return 1;
-}
+static int integer(lua_State *L) { PRD(L, integer); }
 
 /* .11 Rounding-related functions */
 
@@ -788,6 +796,11 @@ static const struct luaL_Reg met[] = {
 	{"abs",        abs_},
 	/* .6 Comparison functions */
 	{"cmp",        cmp},
+	{"nan",        nan_},
+	{"inf",        inf},
+	{"number",     number},
+	{"zero",       zero},
+	{"regular",    regular},
 	/* .7 Transcendental functions */
 	{"log",        log_},
 	{"log2",       log2_},
