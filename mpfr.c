@@ -218,6 +218,26 @@ static int get_prec(lua_State *L) {
 
 /* .4 Conversion functions */
 
+static int get_d(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 1);
+	mpfr_t *self = checkfr(L, 1);
+	lua_pushnumber(L, mpfr_get_d(*self, rnd)); return 1;
+}
+
+/* FIXME get_[us][ij] ? */
+
+static int get_d_2exp(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 1);
+	mpfr_t *self = checkfr(L, 1); long exp;
+	lua_pushnumber(L, mpfr_get_d_2exp(&exp, *self, rnd));
+#if LUA_VERSION_NUM < 503
+	lua_pushnumber(L, exp);
+#else
+	lua_pushinteger(L, exp);
+#endif
+	return 2;
+}
+
 #define FIT(L, T) do { \
 	mpfr_rnd_t rnd = settoprnd(L, 0, 1); \
 	mpfr_t *self = checkfr(L, 1); \
@@ -574,6 +594,8 @@ static const struct luaL_Reg met[] = {
 	{"set_prec",   set_prec},
 	{"get_prec",   get_prec},
 	/* .4 Conversion functions */
+	{"get_d",      get_d},
+	{"get_d_2exp", get_d_2exp},
 	{"fits_ulong",   fits_ulong},
 	{"fits_slong",   fits_slong},
 	{"fits_uint",    fits_uint},
