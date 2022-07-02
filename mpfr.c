@@ -182,6 +182,8 @@ static int meth_gc(lua_State *L) {
 	mpfr_clear(*p); return 0;
 }
 
+/* .5 Arithmetic functions */
+
 static int add(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
 	mpfr_t *res = checkfropt(L, 3);
@@ -273,6 +275,8 @@ static int rdiv(lua_State *L) {
 	return div(L); /* FIXME misleading errors */
 }
 
+/* .6 Comparison functions */
+
 /* unlike the C version, propagates NaNs to output */
 static int cmp(lua_State *L) {
 	int i, j, res; lua_settop(L, 2);
@@ -314,6 +318,8 @@ static int eq(lua_State *L) { REL(L, equal); }
 static int ge(lua_State *L) { REL(L, greaterequal); }
 static int gt(lua_State *L) { REL(L, greater); }
 
+/* .7 Transcendental functions */
+
 static int pow_(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
 	mpfr_t *res = checkfropt(L, 3);
@@ -341,6 +347,8 @@ static int rpow(lua_State *L) {
 	lua_replace(L, 1); lua_replace(L, 2);
 	return pow_(L); /* FIXME misleading errors */
 }
+
+/* .9 Formatted output functions */
 
 static int format(lua_State *L) {
 	mpfr_t *p = checkfr(L, 1);
@@ -427,6 +435,8 @@ static int meth_concat(lua_State *L) {
 	lua_concat(L, 2); return 1;
 }
 
+/* .10 Integer and remainder related functions */
+
 static int rint_(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
 	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 2);
@@ -477,16 +487,21 @@ static const struct luaL_Reg met[] = {
 	{"__ge",       ge},
 	{"__gt",       gt},
 	{"__tostring", meth_tostring},
+	/* .5 Arithmetic functions */
 	{"add",        add},
 	{"sub",        sub},
 	{"rsub",       rsub},
 	{"mul",        mul},
 	{"div",        div},
 	{"rdiv",       rdiv},
+	/* .6 Comparison functions */
 	{"cmp",        cmp},
+	/* .7 Transcendental functions */
 	{"pow",        pow_},
 	{"rpow",       rpow},
+	/* .9 Formatted output functions */
 	{"format",     format},
+	/* .10 Integer and remainder related functions */
 	{"rint",       rint_},
 	{"ceil",       ceil_},
 	{"floor",      floor_},
