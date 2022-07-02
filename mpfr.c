@@ -447,6 +447,16 @@ static int number(lua_State *L)  { PRD(L, number); }
 static int zero(lua_State *L)    { PRD(L, zero); }
 static int regular(lua_State *L) { PRD(L, regular); }
 
+/* also propagates NaNs */
+static int sgn(lua_State *L) {
+	mpfr_t *self; lua_settop(L, 1);
+	self = checkfr(L, 1);
+	lua_pushinteger(L, mpfr_sgn(*self));
+	if (mpfr_erangeflag_p() && mpfr_nan_p(*self))
+		lua_pushvalue(L, 1);
+	return 1;
+}
+
 #define REL(L, P) do { \
 	mpfr_t *self, *other; lua_settop(L, 2); \
 	self = checkfr(L, 1); other = checkfr(L, 2); \
@@ -801,6 +811,7 @@ static const struct luaL_Reg met[] = {
 	{"number",     number},
 	{"zero",       zero},
 	{"regular",    regular},
+	{"sgn",        sgn},
 	/* .7 Transcendental functions */
 	{"log",        log_},
 	{"log2",       log2_},
