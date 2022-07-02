@@ -352,6 +352,33 @@ static int rdiv(lua_State *L) {
 	return div(L); /* FIXME misleading errors */
 }
 
+static int sqrt_(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
+	mpfr_t *res = checkfropt(L, 2);
+
+	switch (type(L, 1)) {
+	case FR: return pushter(L, mpfr_sqrt(*res, tofr(L, 1), rnd));
+	case UI: return pushter(L, mpfr_sqrt_ui(*res, toui(L, 1), rnd));
+	default: return typerror(L, 1, "mpfr or non-negative integer");
+	}
+}
+
+static int rec_sqrt(lua_State *L) { UNF(L, rec_sqrt); }
+static int cbrt_(lua_State *L) { UNF(L, cbrt); }
+
+static int rootn(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 3);
+#if LUA_VERSION_NUM < 503
+	lua_Number n = luaL_checknumber(L, 2);
+#else
+	lua_Integer n = luaL_checkinteger(L, 2);
+#endif
+	luaL_argcheck(L, 0 <= n && n <= ULONG_MAX,
+	              2, "root degree out of range");
+	return pushter(L, mpfr_rootn_ui(*res, *self, n, rnd));
+}
+
 static int neg(lua_State *L) { UNF(L, neg); }
 
 static int meth_unm(lua_State *L) {
@@ -592,6 +619,7 @@ static const struct luaL_Reg mod[] = {
 	{"get_default_prec", get_default_prec},
 	{"set_default_rounding_mode", set_default_rounding_mode},
 	{"get_default_rounding_mode", get_default_rounding_mode},
+	{"sqrt", sqrt_},
 	{"pow", pow_},
 	{0},
 };
@@ -633,6 +661,11 @@ static const struct luaL_Reg met[] = {
 	{"mul",        mul},
 	{"div",        div},
 	{"rdiv",       rdiv},
+	{"sqrt",       sqrt_},
+	{"rsqrt",      rec_sqrt}, /* more common name */
+	{"rec_sqrt",   rec_sqrt},
+	{"cbrt",       cbrt_},
+	{"rootn",      rootn},
 	{"neg",        neg},
 	{"abs",        abs_},
 	/* .6 Comparison functions */
