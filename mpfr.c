@@ -277,6 +277,33 @@ static int get_d_2exp(lua_State *L) {
 	return 2;
 }
 
+static int get_str(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	mpfr_t *self = checkfr(L, 1); int autosize = lua_isnil(L, 3);
+#if LUA_VERSION_NUM < 503
+	lua_Number  base = luaL_optnumber(L, 2, 10),
+	            size = !autosize ? luaL_checknumber(L, 3) : 0;
+#else
+	lua_Integer base = luaL_optinteger(L, 2, 10),
+	            size = !autosize ? luaL_checkinteger(L, 3) : 0;
+#endif
+	char *res; mpfr_exp_t exp;
+
+	luaL_argcheck(L, -36 <= base && base <= -2 || 2 <= base && base <= 62,
+	              2, "base out of range");
+	luaL_argcheck(L, autosize || 1 <= size && size <= SIZE_MAX,
+	              3, "size out of range");
+
+	res = mpfr_get_str(NULL, &exp, base, size, *self, rnd);
+	lua_pushstring(L, res); mpfr_free_str(res);
+#if LUA_VERSION_NUM < 503
+	lua_pushnumber(L, exp);
+#else
+	lua_pushinteger(L, exp);
+#endif
+	return 2;
+}
+
 #define FIT(L, T) do { \
 	mpfr_rnd_t rnd = settoprnd(L, 0, 1); \
 	mpfr_t *self = checkfr(L, 1); \
@@ -812,6 +839,7 @@ static const struct luaL_Reg met[] = {
 	/* .4 Conversion functions */
 	{"get_d",      get_d},
 	{"get_d_2exp", get_d_2exp},
+	{"get_str",    get_str},
 	{"fits_ulong",   fits_ulong},
 	{"fits_slong",   fits_slong},
 	{"fits_uint",    fits_uint},
