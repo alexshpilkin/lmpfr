@@ -151,6 +151,12 @@ static mpfr_t *checkfropt(lua_State *L, int idx) {
 	mpfr_init(*p); return p;
 }
 
+#define UNF(L, F) do { \
+	mpfr_rnd_t rnd = settoprnd(L, 0, 2); \
+	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 2); \
+	return pushter(L, mpfr_ ## F (*res, *self, rnd)); \
+} while (0)
+
 static int fr(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 1, 3);
 
@@ -345,6 +351,15 @@ static int rdiv(lua_State *L) {
 	lua_replace(L, 1); lua_replace(L, 2);
 	return div(L); /* FIXME misleading errors */
 }
+
+static int neg(lua_State *L) { UNF(L, neg); }
+
+static int meth_unm(lua_State *L) {
+	lua_settop(L, 1);
+	return neg(L);
+}
+
+static int abs_(lua_State *L) { UNF(L, abs); }
 
 /* .6 Comparison functions */
 
@@ -589,6 +604,7 @@ static const struct luaL_Reg met[] = {
 	{"__div",      div},
 	/* FIXME __mod with quotient to -inf */
 	{"__pow",      pow_},
+	{"__unm",      meth_unm},
 	{"__concat",   meth_concat},
 	{"__lt",       lt},
 	{"__le",       le},
@@ -617,6 +633,8 @@ static const struct luaL_Reg met[] = {
 	{"mul",        mul},
 	{"div",        div},
 	{"rdiv",       rdiv},
+	{"neg",        neg},
+	{"abs",        abs_},
 	/* .6 Comparison functions */
 	{"cmp",        cmp},
 	/* .7 Transcendental functions */
