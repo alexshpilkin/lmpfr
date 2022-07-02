@@ -157,6 +157,17 @@ static mpfr_t *checkfropt(lua_State *L, int idx) {
 	return pushter(L, mpfr_ ## F (*res, *self, rnd)); \
 } while (0)
 
+#define UNF_UI(L, F) do { \
+	mpfr_rnd_t rnd = settoprnd(L, 0, 2); \
+	mpfr_t *res = checkfropt(L, 2); \
+	\
+	switch (type(L, 1)) { \
+	case FR: return pushter(L, mpfr_ ## F (*res, tofr(L, 1), rnd)); \
+	case UI: return pushter(L, mpfr_ ## F ## _ui (*res, toui(L, 1), rnd)); \
+	default: return typerror(L, 1, "mpfr or non-negative integer"); \
+	} \
+} while (0)
+
 static int fr(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 1, 3);
 
@@ -352,17 +363,7 @@ static int rdiv(lua_State *L) {
 	return div(L); /* FIXME misleading errors */
 }
 
-static int sqrt_(lua_State *L) {
-	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
-	mpfr_t *res = checkfropt(L, 2);
-
-	switch (type(L, 1)) {
-	case FR: return pushter(L, mpfr_sqrt(*res, tofr(L, 1), rnd));
-	case UI: return pushter(L, mpfr_sqrt_ui(*res, toui(L, 1), rnd));
-	default: return typerror(L, 1, "mpfr or non-negative integer");
-	}
-}
-
+static int sqrt_(lua_State *L) { UNF_UI(L, sqrt); }
 static int rec_sqrt(lua_State *L) { UNF(L, rec_sqrt); }
 static int cbrt_(lua_State *L) { UNF(L, cbrt); }
 
@@ -432,6 +433,15 @@ static int ge(lua_State *L) { REL(L, greaterequal); }
 static int gt(lua_State *L) { REL(L, greater); }
 
 /* .7 Transcendental functions */
+
+static int log_  (lua_State *L) { UNF_UI(L, log); }
+static int log2_ (lua_State *L) { UNF(L, log2); }
+static int log10_(lua_State *L) { UNF(L, log10); }
+static int log1p_(lua_State *L) { UNF(L, log1p); }
+static int exp_  (lua_State *L) { UNF(L, exp); }
+static int exp2_ (lua_State *L) { UNF(L, exp2); }
+static int exp10_(lua_State *L) { UNF(L, exp10); }
+static int expm1_(lua_State *L) { UNF(L, expm1); }
 
 static int pow_(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
@@ -640,6 +650,7 @@ static const struct luaL_Reg mod[] = {
 	{"set_default_rounding_mode", set_default_rounding_mode},
 	{"get_default_rounding_mode", get_default_rounding_mode},
 	{"sqrt", sqrt_},
+	{"log", log_},
 	{"pow", pow_},
 	{0},
 };
@@ -691,6 +702,14 @@ static const struct luaL_Reg met[] = {
 	/* .6 Comparison functions */
 	{"cmp",        cmp},
 	/* .7 Transcendental functions */
+	{"log",        log_},
+	{"log2",       log2_},
+	{"log10",      log10_},
+	{"log1p",      log1p_},
+	{"exp",        exp_},
+	{"exp2",       exp2_},
+	{"exp10",      exp10_},
+	{"expm1",      expm1_},
 	{"pow",        pow_},
 	{"rpow",       rpow},
 	{"cos",        cos_},
