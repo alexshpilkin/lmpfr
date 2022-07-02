@@ -1,7 +1,9 @@
 package = "lmpfr"
-version = "scm-0"
+version = "scm-0" -- "0.1.0-1"
 source = {
 	url = "git+https://github.com/alexshpilkin/lmpfr",
+	-- tag = "0.1.0",
+	-- md5 = "0123456789abcdef0123456789abcdef",
 }
 description = {
 	summary = "LGMP-compatible Lua C API bindings for GNU MPFR",
