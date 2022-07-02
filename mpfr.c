@@ -520,11 +520,44 @@ static int digamma (lua_State *L) { UNF(L, digamma); }
 static int zeta    (lua_State *L) { UNF_UI(L, zeta); }
 static int erf_    (lua_State *L) { UNF(L, erf); }
 static int erfc_   (lua_State *L) { UNF(L, erfc); }
-static int j0_     (lua_State *L) { UNF(L, j0); }
-static int j1_     (lua_State *L) { UNF(L, j1); }
-static int y0_     (lua_State *L) { UNF(L, y0); }
-static int y1_     (lua_State *L) { UNF(L, y1); }
-static int ai      (lua_State *L) { UNF(L, ai); }
+
+static int j0_(lua_State *L) { UNF(L, j0); }
+static int j1_(lua_State *L) { UNF(L, j1); }
+
+static int jn_(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	int isself = lua_isuserdata(L, 1),
+	    selfidx = isself ? 1 : 2, nidx = isself ? 2 : 1;
+#if LUA_VERSION_NUM < 503
+	lua_Number n = luaL_checknumber(L, nidx);
+#else
+	lua_Integer n = luaL_checkinteger(L, nidx);
+#endif
+	mpfr_t *self = checkfr(L, selfidx), *res = checkfropt(L, 3);
+	luaL_argcheck(L, LONG_MIN <= n && n <= LONG_MAX,
+	              nidx, "index out of range");
+	return pushter(L, mpfr_jn(*res, n, *self, rnd));
+}
+
+static int y0_(lua_State *L) { UNF(L, y0); }
+static int y1_(lua_State *L) { UNF(L, y1); }
+
+static int yn_(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3);
+	int isself = lua_isuserdata(L, 1),
+	    selfidx = isself ? 1 : 2, nidx = isself ? 2 : 1;
+#if LUA_VERSION_NUM < 503
+	lua_Number n = luaL_checknumber(L, nidx);
+#else
+	lua_Integer n = luaL_checkinteger(L, nidx);
+#endif
+	mpfr_t *self = checkfr(L, selfidx), *res = checkfropt(L, 3);
+	luaL_argcheck(L, LONG_MIN <= n && n <= LONG_MAX,
+	              nidx, "index out of range");
+	return pushter(L, mpfr_yn(*res, n, *self, rnd));
+}
+
+static int ai(lua_State *L) { UNF(L, ai); }
 
 /* .9 Formatted output functions */
 
@@ -689,6 +722,8 @@ static const struct luaL_Reg mod[] = {
 	{"pow", pow_},
 	{"atan2", atan2_},
 	{"zeta", zeta},
+	{"jn", jn_},
+	{"yn", yn_},
 	{0},
 };
 
@@ -783,8 +818,10 @@ static const struct luaL_Reg met[] = {
 	{"erfc",       erfc_},
 	{"j0",         j0_},
 	{"j1",         j1_},
+	{"jn",         jn_},
 	{"y0",         y0_},
 	{"y1",         y1_},
+	{"yn",         yn_},
 	{"ai",         ai},
 	/* .9 Formatted output functions */
 	{"format",     format},
