@@ -526,6 +526,12 @@ static int round_    (lua_State *L) { RND(L, round); }
 static int roundeven_(lua_State *L) { RND(L, roundeven); }
 static int trunc_    (lua_State *L) { RND(L, trunc); }
 
+static int integer(lua_State *L) {
+	mpfr_t *self; lua_settop(L, 1);
+	self = checkfr(L, 1);
+	lua_pushboolean(L, mpfr_integer_p(*self)); return 1;
+}
+
 /* .11 Rounding-related functions */
 
 static int set_default_rounding_mode(lua_State *L) {
@@ -625,6 +631,7 @@ static const struct luaL_Reg met[] = {
 	{"round",      round_},
 	{"roundeven",  roundeven_},
 	{"trunc",      trunc_},
+	{"integer",    integer},
 	/* .11 Rounding-related functions */
 	{"prec_round", prec_round},
 	{0},
