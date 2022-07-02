@@ -144,17 +144,22 @@ static mpfr_rnd_t settoprnd(lua_State *L, int low, int idx) {
 
 #define pushter(L, I) (lua_pushinteger((L), (I)), 2)
 
-static mpfr_t *checkfropt(lua_State *L, int idx) {
-	mpfr_t *p;
+/* .1 Initialization functions */
 
-	if (!lua_isnil(L, idx))
-		return checkfr(L, idx);
-
-	p = lua_newuserdata(L, sizeof *p);
+static mpfr_t *newfr(lua_State *L) {
+	mpfr_t *p = lua_newuserdata(L, sizeof *p);
+	mpfr_init(*p);
 	lua_pushvalue(L, lua_upvalueindex(FRMETA));
 	lua_setmetatable(L, -2);
-	lua_replace(L, idx);
-	mpfr_init(*p); return p;
+	return p;
+}
+
+static mpfr_t *checkfropt(lua_State *L, int idx) {
+	mpfr_t *p;
+	if (!lua_isnil(L, idx))
+		return checkfr(L, idx);
+	p = newfr(L); lua_replace(L, idx);
+	return p;
 }
 
 #define UNF(L, F) do { \
@@ -190,41 +195,13 @@ static mpfr_t *checkfropt(lua_State *L, int idx) {
 	return pushter(L, mpfr_ ## F (*res, *self, *other, rnd)); \
 } while (0)
 
+static int set(lua_State *L);
+
 static int fr(lua_State *L) {
-	mpfr_rnd_t rnd = settoprnd(L, 1, 3);
-
-	mpfr_t *p = lua_newuserdata(L, sizeof *p);
-	lua_pushvalue(L, lua_upvalueindex(FRMETA));
-	lua_setmetatable(L, -2);
-
-	switch (type(L, 1)) {
-	case FR:  return pushter(L, mpfr_init_set(*p, tofr(L, 1), rnd));
-	case Z:   return pushter(L, mpfr_init_set_z(*p, toz(L, 1), rnd));
-	case F:   return pushter(L, mpfr_init_set_f(*p, tof(L, 1), rnd));
-	case UI:  return pushter(L, mpfr_init_set_ui(*p, toui(L, 1), rnd));
-	case SI:  return pushter(L, mpfr_init_set_si(*p, tosi(L, 1), rnd));
-	case D:   return pushter(L, mpfr_init_set_d(*p, tod(L, 1), rnd));
-	case NIL:
-		mpfr_init(*p); return 1;
-	case STR:
-		mpfr_init(*p); {
-		const char *s = lua_tostring(L, 1);
-		int detect = lua_isnil(L, 2);
-#if LUA_VERSION_NUM < 503
-		lua_Number n = !detect ? luaL_checknumber(L, 2) : 0;
-#else
-		lua_Integer n = !detect ? luaL_checkinteger(L, 2) : 0;
-#endif
-		luaL_argcheck(L, detect || 2 <= n && n <= 62,
-		              2, "base out of range");
-		lua_pushnumber(L, mpfr_strtofr(*p, s, (char **)&s, n, rnd));
-		while (isspace(*s)) s++;
-		luaL_argcheck(L, !*s, 1, "invalid floating-point constant");
-		return 2; }
-	default:
-		mpfr_init(*p); /* for later cleanup */
-		return typerror(L, 1, "mpfr, mpf, mpz, number, or string");
-	}
+	newfr(L); lua_insert(L, 1);
+	set(L); /* FIXME misleading errors */
+	lua_pushvalue(L, 1); lua_insert(L, -2);
+	return 2;
 }
 
 static int meth_gc(lua_State *L) {
@@ -253,6 +230,40 @@ static int get_prec(lua_State *L) {
 	mpfr_t *self; lua_settop(L, 1);
 	self = checkfr(L, 1);
 	lua_pushinteger(L, mpfr_get_prec(*self)); return 1;
+}
+
+/* .2 Assignment functions */
+
+static int set(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 2, 3);
+	mpfr_t *self = checkfr(L, 1);
+
+	switch (type(L, 2)) {
+	case FR:  lua_pushinteger(L, mpfr_set(*self, tofr(L, 2), rnd)); break;
+	case Z:   lua_pushinteger(L, mpfr_set_z(*self, toz(L, 2), rnd)); break;
+	case F:   lua_pushinteger(L, mpfr_set_f(*self, tof(L, 2), rnd)); break;
+	case UI:  lua_pushinteger(L, mpfr_set_ui(*self, toui(L, 2), rnd)); break;
+	case SI:  lua_pushinteger(L, mpfr_set_si(*self, tosi(L, 2), rnd)); break;
+	case D:   lua_pushinteger(L, mpfr_set_d(*self, tod(L, 2), rnd)); break;
+	case NIL: break;
+	case STR: {
+		const char *s = lua_tostring(L, 2);
+		int detect = lua_isnil(L, 3);
+#if LUA_VERSION_NUM < 503
+		lua_Number n = !detect ? luaL_checknumber(L, 3) : 0;
+#else
+		lua_Integer n = !detect ? luaL_checkinteger(L, 3) : 0;
+#endif
+		luaL_argcheck(L, detect || 2 <= n && n <= 62,
+		              3, "base out of range");
+		lua_pushinteger(L, mpfr_strtofr(*self, s, (char **)&s, n, rnd));
+		while (isspace(*s)) s++;
+		luaL_argcheck(L, !*s, 2, "invalid floating-point constant");
+		break; }
+	default:
+		return typerror(L, 2, "mpfr, mpf, mpz, number, or string");
+	}
+	return 1;
 }
 
 /* .4 Conversion functions */
@@ -836,6 +847,8 @@ static const struct luaL_Reg met[] = {
 	/* .1 Initialization functions */
 	{"set_prec",   set_prec},
 	{"get_prec",   get_prec},
+	/* .2 Assignment functions */
+	{"set",        set},
 	/* .4 Conversion functions */
 	{"get_d",      get_d},
 	{"get_d_2exp", get_d_2exp},
