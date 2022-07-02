@@ -516,6 +516,15 @@ static int eint    (lua_State *L) { UNF(L, eint); }
 static int li2     (lua_State *L) { UNF(L, li2); }
 static int gamma_  (lua_State *L) { UNF(L, gamma); }
 static int lngamma (lua_State *L) { UNF(L, lngamma); }
+
+static int lgamma_(lua_State *L) {
+	mpfr_rnd_t rnd = settoprnd(L, 0, 2);
+	mpfr_t *self = checkfr(L, 1), *res = checkfropt(L, 2);
+	int sign, ter = mpfr_lgamma(*res, &sign, *self, rnd);
+	lua_pushinteger(L, sign); lua_pushinteger(L, ter);
+	return 3;
+}
+
 static int digamma (lua_State *L) { UNF(L, digamma); }
 static int zeta    (lua_State *L) { UNF_UI(L, zeta); }
 static int erf_    (lua_State *L) { UNF(L, erf); }
@@ -812,6 +821,7 @@ static const struct luaL_Reg met[] = {
 	{"gamma",      gamma_},
 	{"tgamma",     gamma_}, /* C99 name */
 	{"lngamma",    lngamma},
+	{"lgamma",     lgamma_},
 	{"digamma",    digamma},
 	{"zeta",       zeta},
 	{"erf",        erf_},
