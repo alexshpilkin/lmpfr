@@ -461,6 +461,26 @@ static int rpow(lua_State *L) {
 	return pow_(L); /* FIXME misleading errors */
 }
 
+static int cos_ (lua_State *L) { UNF(L, cos); }
+static int sin_ (lua_State *L) { UNF(L, sin); }
+static int tan_ (lua_State *L) { UNF(L, tan); }
+static int sec  (lua_State *L) { UNF(L, sec); }
+static int csc  (lua_State *L) { UNF(L, csc); }
+static int cot  (lua_State *L) { UNF(L, cot); }
+static int acos_(lua_State *L) { UNF(L, acos); }
+static int asin_(lua_State *L) { UNF(L, asin); }
+static int atan_(lua_State *L) { UNF(L, atan); }
+
+static int cosh_ (lua_State *L) { UNF(L, cosh); }
+static int sinh_ (lua_State *L) { UNF(L, sinh); }
+static int tanh_ (lua_State *L) { UNF(L, tanh); }
+static int sech  (lua_State *L) { UNF(L, sech); }
+static int csch  (lua_State *L) { UNF(L, csch); }
+static int coth  (lua_State *L) { UNF(L, coth); }
+static int acosh_(lua_State *L) { UNF(L, acosh); }
+static int asinh_(lua_State *L) { UNF(L, asinh); }
+static int atanh_(lua_State *L) { UNF(L, atanh); }
+
 /* .9 Formatted output functions */
 
 static int format(lua_State *L) {
@@ -673,6 +693,24 @@ static const struct luaL_Reg met[] = {
 	/* .7 Transcendental functions */
 	{"pow",        pow_},
 	{"rpow",       rpow},
+	{"cos",        cos_},
+	{"sin",        sin_},
+	{"tan",        tan_},
+	{"sec",        sec},
+	{"csc",        csc},
+	{"cot",        cot},
+	{"acos",       acos_},
+	{"asin",       asin_},
+	{"atan",       atan_},
+	{"cosh",       cosh_},
+	{"sinh",       sinh_},
+	{"tanh",       tanh_},
+	{"sech",       sech},
+	{"csch",       csch},
+	{"coth",       coth},
+	{"acosh",      acosh_},
+	{"asinh",      asinh_},
+	{"atanh",      atanh_},
 	/* .9 Formatted output functions */
 	{"format",     format},
 	/* .10 Integer and remainder related functions */
