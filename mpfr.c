@@ -168,6 +168,15 @@ static mpfr_t *checkfropt(lua_State *L, int idx) {
 	} \
 } while (0)
 
+#define UNF_SC(L, F) do { \
+	mpfr_rnd_t rnd = settoprnd(L, 0, 3); \
+	mpfr_t *self = checkfr(L, 1), \
+	       *rs = checkfropt(L, 2), \
+	       *rc = checkfropt(L, 3); \
+	lua_pushinteger(L, mpfr_ ## F (*rs, *rc, *self, rnd)); \
+	return 3; \
+} while (0)
+
 static int fr(lua_State *L) {
 	mpfr_rnd_t rnd = settoprnd(L, 1, 3);
 
@@ -471,9 +480,12 @@ static int rpow(lua_State *L) {
 	return pow_(L); /* FIXME misleading errors */
 }
 
-static int cos_ (lua_State *L) { UNF(L, cos); }
-static int sin_ (lua_State *L) { UNF(L, sin); }
-static int tan_ (lua_State *L) { UNF(L, tan); }
+static int cos_(lua_State *L) { UNF(L, cos); }
+static int sin_(lua_State *L) { UNF(L, sin); }
+static int tan_(lua_State *L) { UNF(L, tan); }
+
+static int sin_cos(lua_State *L) { UNF_SC(L, sin_cos); }
+
 static int sec  (lua_State *L) { UNF(L, sec); }
 static int csc  (lua_State *L) { UNF(L, csc); }
 static int cot  (lua_State *L) { UNF(L, cot); }
@@ -481,9 +493,12 @@ static int acos_(lua_State *L) { UNF(L, acos); }
 static int asin_(lua_State *L) { UNF(L, asin); }
 static int atan_(lua_State *L) { UNF(L, atan); }
 
-static int cosh_ (lua_State *L) { UNF(L, cosh); }
-static int sinh_ (lua_State *L) { UNF(L, sinh); }
-static int tanh_ (lua_State *L) { UNF(L, tanh); }
+static int cosh_(lua_State *L) { UNF(L, cosh); }
+static int sinh_(lua_State *L) { UNF(L, sinh); }
+static int tanh_(lua_State *L) { UNF(L, tanh); }
+
+static int sinh_cosh(lua_State *L) { UNF_SC(L, sinh_cosh); }
+
 static int sech  (lua_State *L) { UNF(L, sech); }
 static int csch  (lua_State *L) { UNF(L, csch); }
 static int coth  (lua_State *L) { UNF(L, coth); }
@@ -715,6 +730,8 @@ static const struct luaL_Reg met[] = {
 	{"cos",        cos_},
 	{"sin",        sin_},
 	{"tan",        tan_},
+	{"sincos",     sin_cos}, /* more common name */
+	{"sin_cos",    sin_cos},
 	{"sec",        sec},
 	{"csc",        csc},
 	{"cot",        cot},
@@ -724,6 +741,8 @@ static const struct luaL_Reg met[] = {
 	{"cosh",       cosh_},
 	{"sinh",       sinh_},
 	{"tanh",       tanh_},
+	{"sincosh",    sinh_cosh}, /* by analogy with sincos() */
+	{"sinh_cosh",  sinh_cosh},
 	{"sech",       sech},
 	{"csch",       csch},
 	{"coth",       coth},
